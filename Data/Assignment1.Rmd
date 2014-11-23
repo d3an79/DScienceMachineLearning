@@ -5,35 +5,51 @@ date: "Friday, November 21, 2014"
 output: html_document
 ---
 
-```{r message=FALSE}
+#Is it possible to classify how well an exercise is completed by six participants by analysing data captured from accelerometers on their belt, forearm, arm and dumbell?  
+
+## Introduction
+
+This report is the written submission to be peer evaluated for the machine learning module as part of the data science specialisation offered by John Hopkins University through Coursera.  
+The report will follow the structure of loading in the data and performing some exploratory data analysis and preparing the predictor variables, creating the model then assessing the model by predicting against a validation data. Justification on actions taken will be given throughout.  
+
+## Loading the data
+
+The first step towards fitting the prediction model is to obtain the training data from https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv. If the working directory is set to the folder that the downloaded file is in then it can be read using  the read.csv command.  
+
+In order to run many of the machine learning functions then the desired packages must be loaded into memory.
+
+```{r message=FALSE, warning=FALSE}
 require(caret)
 require(randomForest)
 ```
 
-set seed
-```{r}
+The seed should also be set (to 1234 in this case) in order for the remaining steps that use random varialbes to be reproducible.  
+```{r cache=TRUE, echo=FALSE}
 set.seed(1234)
 ```
 
 
-https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
-load data
-```{r cache=TRUE}
+```{r cache=TRUE, echo=FALSE}
 training <- read.csv("pml-training.csv")
 
 ```
 
-Exploratory data analysis
+## Exploratory data analysis and preparing the predictors
 
+The result of running str() on the training set (Appendix A) show that there are many variables that contain NA or no data. 
 
-Remove new window = yes fields as these are summary statistics (good forhumans but not so good gor ML)
-then drop the field for new window (all will be no so data useless)
+```{r cache=TRUE, echo=FALSE}
+strResult <-  training
+```
+
+This is because there is summary data for training sessions which can be found when the 'new_window' variable is 'yes'. This data will not be used in the final model so it will need to be stripped out first by removing the rows where 'new_window' = 'yes' 
+
 ```{r cache=TRUE}
 training <- training[training$new_window=="no",]
 training[,"new_window"] <- NULL
 ```
 
-remove values mostly missing and NA's - these just used to hold summary stat data?
+then removing the columns where the data is primarily 'NA' or blank
 ```{r cache=TRUE}
 list <- as.vector(apply(training, 2, function(x){sum(is.na(x))}))
 subset <- list==0
@@ -45,9 +61,7 @@ training<- training[,subset]
 
 ```
 
-
-
-remove timestamps and x column and num_window as they will not improve prediction
+The timestamp data, 'X' column and num_window also need removing as they will not be used in the prediction model.
 ```{r cache=TRUE}
 training[,"X"] <- NULL
 training[,"raw_timestamp_part_1"] <- NULL
@@ -56,17 +70,12 @@ training[,"cvtd_timestamp"] <- NULL
 training[,"num_window"] <- NULL
 ```
 
+The names can be kept because the test data that is to be used for submission has them, though if the algorithm was to be used with other people not in the initial study they should be left out as they would not provide relevant data.  
+
+The training dataset will be subdived into a train and validation set (75/25 split) for the purpose of assessing the models predictve power.  
+Note, the random forests algortihm uses boosting as a form of cross validation but for the purpose of this study a validation data set will also be used to ensure that cross validation is undertaken.
 
 
-
-
-
-
-Keep the names because the test data has them though if the algorithm was to be used with other people they should be left out
-
-
-
-sub-divide on class so we can use the remaining to estimate out of sample error
 ```{r cache=TRUE}
 inTrain <- createDataPartition(training$classe, p=.75, list=F)
 
@@ -74,32 +83,41 @@ train <- training[inTrain,]
 validation <- training[-inTrain,]
 ```
 
+## Creating the predictive model
 
+To create the predictive model the 'Random Forest' algorithm will be used which acts like a decision tree in that it creates branches where each set of decisions leads to a classification, but also uses a technique called bagging which uses bootstrapping to create many trees which are then  aggregated into one fianl tree which is used for classification.  
 
-
-standardize variables
-test <- 
-
-predict - random forest 
-uses boostrapping which is a form ofcv
-
+The model is fit using the a call to the random forest function with the number of trees to be created set at 2000.  
 
 ```{r cache=TRUE}
 modelFit <- randomForest(as.factor(classe)~., data=train, ntree=2000)
 ```
 
+The summary of the final model can be seen below
 
-```{r}
+```{r cache=TRUE, echo=FALSE}
 modelFit
 ```
 
+This gives an estimated Out Of Bag (OOB) error rate of 0.49% which translates to roughly 95% accuracy.  
 
+## Testing the predictive model
 
-
+As well as the accuracy given from the fitted model the out of sample error can be estimated by running the fitted model against the validation data in a confusion matrix and obtaining its accuracy; this is shown below.
 
 predict on validation set
 ```{r cache=TRUE}
 confusionMatrix(validation$classe, predict(modelFit,validation))
 ```
 
+The output of the confusion matrix shows that this is a very good fit with an estimated out of sample accuracy of 99.4% with 95% confidance intervals only differing by 0.2% percent in either direction.  
 
+## Appendix
+
+### Appendix A
+
+Results from running str() on the training data
+
+```{r echo=FALSE, cache=TRUE}
+str(strResult)
+```
