@@ -1,0 +1,105 @@
+---
+title: "Machine Learning Assignment 1"
+author: "Dean Findlay"
+date: "Friday, November 21, 2014"
+output: html_document
+---
+
+```{r message=FALSE}
+require(caret)
+require(randomForest)
+```
+
+set seed
+```{r}
+set.seed(1234)
+```
+
+
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+load data
+```{r cache=TRUE}
+training <- read.csv("pml-training.csv")
+
+```
+
+Exploratory data analysis
+
+
+Remove new window = yes fields as these are summary statistics (good forhumans but not so good gor ML)
+then drop the field for new window (all will be no so data useless)
+```{r cache=TRUE}
+training <- training[training$new_window=="no",]
+training[,"new_window"] <- NULL
+```
+
+remove values mostly missing and NA's - these just used to hold summary stat data?
+```{r cache=TRUE}
+list <- as.vector(apply(training, 2, function(x){sum(is.na(x))}))
+subset <- list==0
+training<- training[,subset]
+
+list <- as.vector(apply(training, 2, function(x){sum(x=="")}))
+subset <- list==0
+training<- training[,subset]
+
+```
+
+
+
+remove timestamps and x column and num_window as they will not improve prediction
+```{r cache=TRUE}
+training[,"X"] <- NULL
+training[,"raw_timestamp_part_1"] <- NULL
+training[,"raw_timestamp_part_2"] <- NULL
+training[,"cvtd_timestamp"] <- NULL
+training[,"num_window"] <- NULL
+```
+
+
+
+
+
+
+
+Keep the names because the test data has them though if the algorithm was to be used with other people they should be left out
+
+
+
+sub-divide on class so we can use the remaining to estimate out of sample error
+```{r cache=TRUE}
+inTrain <- createDataPartition(training$classe, p=.75, list=F)
+
+train <- training[inTrain,] 
+validation <- training[-inTrain,]
+```
+
+
+
+
+standardize variables
+test <- 
+
+predict - random forest 
+uses boostrapping which is a form ofcv
+
+
+```{r cache=TRUE}
+modelFit <- randomForest(as.factor(classe)~., data=train, ntree=2000)
+```
+
+
+```{r}
+modelFit
+```
+
+
+
+
+
+predict on validation set
+```{r cache=TRUE}
+confusionMatrix(validation$classe, predict(modelFit,validation))
+```
+
+
